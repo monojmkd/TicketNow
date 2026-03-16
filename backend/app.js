@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 
 const authRoutes = require("./routes/auth.routes");
@@ -7,24 +9,27 @@ const errorHandler = require("./middleware/error.middleware");
 
 const app = express();
 
-// ─── CORS ────────────────────────────────────────────────────────────────────
-// Allow requests from the Vercel frontend and local dev
-const ALLOWED_ORIGINS = [
-  process.env.FRONTEND_URL,
-  "http://localhost:5173",
-  "https://ticketnow-eta.vercel.app/",
-].filter(Boolean);
-
+// ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+
+  // Allow all vercel.app subdomains + localhost for dev
+  const isAllowed =
+    !origin || // same-origin / server-to-server
+    origin.endsWith(".vercel.app") || // any Vercel preview/prod URL
+    origin === process.env.FRONTEND_URL || // explicit production URL
+    /^http:\/\/localhost:\d+$/.test(origin); // local dev
+
+  if (isAllowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    );
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
   }
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-  );
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
