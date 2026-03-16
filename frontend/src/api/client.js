@@ -1,4 +1,6 @@
-const BASE = "/api";
+// In dev: Vite proxy rewrites /api → localhost:5000
+// In prod: VITE_API_URL points to the Render backend URL
+const BASE = import.meta.env.VITE_API_URL || "/api";
 
 export async function request(method, path, body = null) {
   const token = localStorage.getItem("token");

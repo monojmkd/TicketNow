@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Proxy all /api calls to the backend so we never hit CORS in dev
+      // Only active in local dev — in production the VITE_API_URL env var is used
       "/api": {
         target: "http://localhost:5000",
         changeOrigin: true,
