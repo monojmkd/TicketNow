@@ -15,18 +15,20 @@ const sequelize = new Sequelize(connectionString, {
       rejectUnauthorized: false,
     },
     connectTimeout: 30000,
-    // Required for pgBouncer (Supabase uses this internally)
     prepare: false,
   },
-  // Single connection — avoids pool exhaustion on Supabase free tier.
-  // Supabase free tier allows only 15 connections total across all clients.
-  // A pool of even 2-3 connections causes timeouts when sync() runs at startup.
   pool: {
-    max: 1,
+    max: 2,
     min: 0,
-    acquire: 120000,
-    idle: 30000,
-    evict: 30000,
+    acquire: 60000,
+    idle: 10000,
+    evict: 10000,
+    // Validate the connection is still alive before handing it to a query.
+    // Without this, Sequelize reuses a connection that Supabase already
+    // dropped (ETIMEDOUT) instead of opening a fresh one.
+    validate: (connection) => {
+      return connection && !connection._ending && connection._connected;
+    },
   },
 });
 
