@@ -4,7 +4,7 @@ const app = require("./app");
 const sequelize = require("./config/db");
 
 require("./events/listeners");
-require("./events/notification_worker");
+require("./workers/notification.worker");
 
 const PORT = process.env.PORT || 5000;
 
