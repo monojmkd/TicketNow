@@ -14,13 +14,14 @@ const sequelize = new Sequelize(connectionString, {
       require: true,
       rejectUnauthorized: false,
     },
-    connectTimeout: 60000,
+    connectTimeout: 30000,
   },
   pool: {
-    max: 2,
+    max: 3,
     min: 0,
-    acquire: 60000,
+    acquire: 60000,  // give bcrypt time to finish before timing out
     idle: 10000,
+    evict: 10000,
   },
 });
 
