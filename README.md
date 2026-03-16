@@ -1,60 +1,193 @@
-# Event Booking System
+# TicketNow — Event Booking System
 
-A Node.js backend for managing event bookings with user authentication and role-based access control.
+A full-stack event booking platform supporting two user roles — **Organizers** who create and manage events, and **Customers** who browse and book tickets. Built with Node.js + Express on the backend and React + Vite on the frontend.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [Background Tasks](#background-tasks)
+- [Design Decisions](#design-decisions)
+
+---
 
 ## Features
 
-- User registration and authentication
-- Event creation and management
-- Booking system
-- Role-based access control (user/admin)
-- Event-driven architecture
+### Organizer
 
-## Installation
+- Register and log in as an organizer
+- Create, edit events with title, description, date, location, ticket count, price, and cover image
+- View a dashboard with stats — tickets sold, capacity, estimated revenue
+- Customers with active bookings are automatically notified when an event is updated
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Set up environment variables in `.env` file:
-   ```
-   MONGO_URI=mongodb://localhost:27017/event-booking
-   JWT_SECRET=your_jwt_secret_here
-   PORT=5000
-   ```
-4. Start MongoDB
-5. Run the server:
-   ```bash
-   npm run dev
-   ```
+### Customer
 
-## API Endpoints
+- Browse all events without signing in
+- Register and log in to book tickets
+- Quantity selector with live total price calculation
+- View booking history grouped by confirmed and cancelled
+- Receive real-time toast notifications when a booked event is updated
 
-### Authentication
+### General
 
-- POST /api/auth/register
-- POST /api/auth/login
+- JWT-based stateless authentication
+- Role-based access control on every protected route
+- Atomic ticket booking — race conditions handled via database-level row locking
+- Event images uploaded directly to Supabase Storage (bypasses the backend)
+- Async background notifications via an in-memory job queue
+
+---
+
+## Tech Stack
+
+### Backend
+
+| Layer           | Choice                                |
+| --------------- | ------------------------------------- |
+| Runtime         | Node.js                               |
+| Framework       | Express                               |
+| ORM             | Sequelize                             |
+| Database        | PostgreSQL (Supabase)                 |
+| Auth            | JWT (jsonwebtoken + bcryptjs)         |
+| Background jobs | Custom in-memory queue (EventEmitter) |
+
+### Frontend
+
+| Layer        | Choice                                         |
+| ------------ | ---------------------------------------------- |
+| Framework    | React 18                                       |
+| Build tool   | Vite                                           |
+| Routing      | React Router v6                                |
+| File storage | Supabase Storage (direct browser upload)       |
+| Styling      | Pure CSS (custom design system, no UI library) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- A [Supabase](https://supabase.com) project (free tier is fine)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/monojmkd/event-booking-system.git
+cd event-booking-system
+```
+
+### 2. Backend setup
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Fill in your .env values (see Environment Variables below)
+node server.js
+```
+
+Backend runs on `http://localhost:5000`
+
+### 3. Frontend setup
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+# Fill in your .env values
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173`
+
+### 4. Supabase Storage setup
+
+1. Go to **Supabase Dashboard → Storage → New bucket**
+2. Name it `event-images`, enable **Public bucket**
+3. Go to **SQL Editor** and Add New Policy.
+
+## Environment Variables
+
+### Backend — `backend/.env`
+
+```env
+PORT=5000
+DATABASE_URL=postgres://user:password@host:5432/database
+JWT_SECRET=your_long_random_secret_here
+JWT_EXPIRES_IN=7d
+```
+
+### Auth
+
+| Method | Endpoint         | Auth | Body                          |
+| ------ | ---------------- | ---- | ----------------------------- |
+| POST   | `/auth/register` | —    | `name, email, password, role` |
+| POST   | `/auth/login`    | —    | `email, password`             |
 
 ### Events
 
-- GET /api/events
-- GET /api/events/:id
-- POST /api/events (auth required)
-- PUT /api/events/:id (auth required, owner only)
-- DELETE /api/events/:id (auth required, owner only)
+| Method | Endpoint      | Auth | Role            |
+| ------ | ------------- | ---- | --------------- |
+| GET    | `/events`     | —    | Public          |
+| POST   | `/events`     | ✓    | organizer       |
+| PUT    | `/events/:id` | ✓    | organizer (own) |
 
-### Bookings
+## Background Tasks
 
-- GET /api/bookings (auth required)
-- GET /api/bookings/:id (auth required, owner only)
-- POST /api/bookings (auth required)
-- PUT /api/bookings/:id/cancel (auth required, owner only)
+The backend uses a custom in-memory job queue (no Redis required) built on Node's `EventEmitter`. Two background tasks are implemented:
 
-## Technologies Used
+### Task 1 — Booking Confirmation
 
-- Node.js
-- Express.js
-- MongoDB with Mongoose
-- JWT for authentication
-- bcryptjs for password hashing
+Triggered when a customer successfully books tickets.
+
+### Task 2 — Event Update Notification
+
+Triggered when an organizer updates an event.Notifies all customers with confirmed bookings.
+
+## Design Decisions
+
+### Atomic bookings via database transaction
+
+The availability check and ticket decrement are wrapped in a single Sequelize transaction with a pessimistic row lock (`{ lock: true }`). This prevents two concurrent requests from double-booking the last seat — the second request waits until the first commits, then reads the updated count.
+
+### JWT is stateless
+
+Sessions are not stored server-side. The token contains `{ id, email, role, name }` and is verified on every request. This means server restarts don't log users out and the API can scale horizontally without a shared session store. Tokens expire after 7 days.
+
+### Price stored in cents
+
+All monetary values are stored as integers representing cents (e.g. `4999` = $49.99). This avoids floating-point precision issues with currency arithmetic.
+
+### Image upload bypasses the backend
+
+Event images are uploaded directly from the browser to Supabase Storage. The backend only stores the resulting URL string. This keeps the Express server stateless and avoids piping large files through Node.
+
+### In-memory job queue
+
+The notification queue is a simple EventEmitter-based FIFO queue with no external dependencies. Jobs are processed one at a time so handlers never race. The trade-off is that pending jobs are lost on server restart — acceptable for this use case since notifications are best-effort.
+
+### Role checks are two-layered
+
+- `role.middleware.js` guards routes by role category (organizer vs customer)
+- Controllers enforce resource ownership (e.g. organizer can only edit their own events)
+
+This keeps route files declarative and keeps ownership logic close to the data.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please fork this repository and submit a pull request for any changes you wish to make.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for more information.
+Connect with Me
+LinkedIn (https://www.linkedin.com/in/monoj-kumar-das-019340a9/)
