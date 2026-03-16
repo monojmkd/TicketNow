@@ -8,33 +8,26 @@ require("./workers/notification.worker");
 
 const PORT = process.env.PORT || 5000;
 
-async function start() {
-  // Retry DB connection up to 5 times with 3s between attempts
-  let connected = false;
-  for (let attempt = 1; attempt <= 5; attempt++) {
+// Start listening FIRST so Render sees an open port immediately
+// Then connect to the database in the background
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  connectWithRetry();
+});
+
+async function connectWithRetry() {
+  for (let attempt = 1; attempt <= 10; attempt++) {
     try {
       await sequelize.authenticate();
       console.log(`Database connected (attempt ${attempt})`);
-      connected = true;
-      break;
+      await sequelize.sync();
+      console.log("Database synced");
+      return;
     } catch (err) {
-      console.warn(`Connection attempt ${attempt} failed: ${err.message}`);
-      if (attempt < 5) await new Promise((r) => setTimeout(r, 3000));
+      console.warn(`DB connection attempt ${attempt} failed: ${err.message}`);
+      if (attempt < 10) await new Promise((r) => setTimeout(r, 3000));
     }
   }
-
-  if (!connected) {
-    console.error("Could not connect to database after 5 attempts. Exiting.");
-    process.exit(1);
-  }
-
-  try {
-    await sequelize.sync();
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  } catch (err) {
-    console.error("Failed to start:", err.message);
-    process.exit(1);
-  }
+  console.error("Could not connect to database after 10 attempts.");
+  // Don't exit — keep the server running so Render doesn't restart loop
 }
-
-start();

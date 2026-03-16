@@ -15,16 +15,12 @@ const sequelize = new Sequelize(connectionString, {
       rejectUnauthorized: false,
     },
     connectTimeout: 60000,
-    // Required for Supabase transaction pooler (port 6543)
-    // Prepared statements don't work with pgBouncer in transaction mode
-    prepare: false,
   },
   pool: {
-    max: 2, // keep low — Supabase free tier has limited connections
+    max: 2,
     min: 0,
     acquire: 60000,
     idle: 10000,
-    evict: 10000,
   },
 });
 
