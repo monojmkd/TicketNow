@@ -14,14 +14,17 @@ const sequelize = new Sequelize(connectionString, {
       require: true,
       rejectUnauthorized: false,
     },
-    // Increase timeouts for Render cold starts
     connectTimeout: 60000,
+    // Required for Supabase transaction pooler (port 6543)
+    // Prepared statements don't work with pgBouncer in transaction mode
+    prepare: false,
   },
   pool: {
-    max: 5,
+    max: 2, // keep low — Supabase free tier has limited connections
     min: 0,
     acquire: 60000,
     idle: 10000,
+    evict: 10000,
   },
 });
 
