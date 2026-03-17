@@ -6,21 +6,13 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
-try {
-  const url = new URL(connectionString);
-  console.log(`DB host: ${url.hostname}:${url.port}`);
-  console.log(`DB user: ${url.username}`);
-} catch {
-  console.log("Could not parse DATABASE_URL");
-}
-
 const sequelize = new Sequelize(connectionString, {
   dialect: "postgres",
   logging: false,
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false,
+      rejectUnauthorized: true, // verify-full — validates Neon's SSL certificate
     },
     connectTimeout: 30000,
   },
