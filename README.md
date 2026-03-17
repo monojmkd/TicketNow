@@ -2,6 +2,9 @@
 
 A full-stack event booking platform supporting two user roles — **Organizers** who create and manage events, and **Customers** who browse and book tickets. Built with Node.js + Express on the backend and React + Vite on the frontend.
 
+🌐 **Live:** [https://ticketnow-eta.vercel.app/](https://ticketnow-eta.vercel.app/)  
+🔧 **API:** [ticketnow-m4r3.onrender.com](https://ticketnow-m4r3.onrender.com)
+
 ---
 
 ## Table of Contents
@@ -39,7 +42,7 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 - JWT-based stateless authentication
 - Role-based access control on every protected route
 - Atomic ticket booking — race conditions handled via database-level row locking
-- Event images uploaded directly to Supabase Storage (bypasses the backend)
+- Event images uploaded directly to Neon Storage (bypasses the backend)
 - Async background notifications via an in-memory job queue
 
 ---
@@ -53,7 +56,7 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 | Runtime         | Node.js                               |
 | Framework       | Express                               |
 | ORM             | Sequelize                             |
-| Database        | PostgreSQL (Supabase)                 |
+| Database        | PostgreSQL (Neon)                     |
 | Auth            | JWT (jsonwebtoken + bcryptjs)         |
 | Background jobs | Custom in-memory queue (EventEmitter) |
 
@@ -64,7 +67,7 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 | Framework    | React 18                                       |
 | Build tool   | Vite                                           |
 | Routing      | React Router v6                                |
-| File storage | Supabase Storage (direct browser upload)       |
+| File storage | Neon Storage (direct browser upload)           |
 | Styling      | Pure CSS (custom design system, no UI library) |
 
 ---
@@ -74,7 +77,7 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 ### Prerequisites
 
 - Node.js 18+
-- A [Supabase](https://supabase.com) project (free tier is fine)
+- - A [Neon](https://neon.tech) account (free) for the database
 
 ### 1. Clone the repo
 
@@ -106,12 +109,6 @@ npm run dev
 ```
 
 Frontend runs on `http://localhost:5173`
-
-### 4. Supabase Storage setup
-
-1. Go to **Supabase Dashboard → Storage → New bucket**
-2. Name it `event-images`, enable **Public bucket**
-3. Go to **SQL Editor** and Add New Policy.
 
 ## Environment Variables
 
@@ -167,7 +164,7 @@ All monetary values are stored as integers representing cents (e.g. `4999` = $49
 
 ### Image upload bypasses the backend
 
-Event images are uploaded directly from the browser to Supabase Storage. The backend only stores the resulting URL string. This keeps the Express server stateless and avoids piping large files through Node.
+Event images are uploaded directly from the browser to Neon Storage. The backend only stores the resulting URL string. This keeps the Express server stateless and avoids piping large files through Node.
 
 ### In-memory job queue
 
