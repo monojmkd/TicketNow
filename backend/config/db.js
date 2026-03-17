@@ -6,6 +6,15 @@ if (!connectionString) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
+// Log the host being used (hide password) so we can verify the URL format
+try {
+  const url = new URL(connectionString);
+  console.log(`DB host: ${url.hostname}:${url.port}`);
+  console.log(`DB user: ${url.username}`);
+} catch {
+  console.log("Could not parse DATABASE_URL");
+}
+
 const sequelize = new Sequelize(connectionString, {
   dialect: "postgres",
   logging: false,
@@ -22,13 +31,6 @@ const sequelize = new Sequelize(connectionString, {
     min: 0,
     acquire: 60000,
     idle: 10000,
-    evict: 10000,
-    // Validate the connection is still alive before handing it to a query.
-    // Without this, Sequelize reuses a connection that Supabase already
-    // dropped (ETIMEDOUT) instead of opening a fresh one.
-    validate: (connection) => {
-      return connection && !connection._ending && connection._connected;
-    },
   },
 });
 
