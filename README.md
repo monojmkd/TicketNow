@@ -42,7 +42,7 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 - JWT-based stateless authentication
 - Role-based access control on every protected route
 - Atomic ticket booking — race conditions handled via database-level row locking
-- Event images uploaded directly to Neon Storage (bypasses the backend)
+- Event images uploaded directly to Supabase Storage (bypasses the backend)
 - Async background notifications via an in-memory job queue
 
 ---
@@ -67,7 +67,7 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 | Framework    | React 18                                       |
 | Build tool   | Vite                                           |
 | Routing      | React Router v6                                |
-| File storage | Neon Storage (direct browser upload)           |
+| File storage | Supabase Storage (direct browser upload)       |
 | Styling      | Pure CSS (custom design system, no UI library) |
 
 ---
