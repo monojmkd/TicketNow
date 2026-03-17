@@ -179,6 +179,24 @@ This keeps route files declarative and keeps ownership logic close to the data.
 
 ---
 
+Organizer uploads image
+↓
+Browser sends file directly to Supabase Storage
+↓
+Supabase stores the file, returns a public URL
+↓
+Frontend sends that URL string to your Express backend
+↓
+Backend saves the URL string into Neon (Events.imageUrl column)
+↓
+Frontend reads the URL from Neon and renders <img src={url} />
+
+Supabase acts purely as a file host — like AWS S3 or Cloudinary. The actual database record in Neon only ever holds a plain text URL string.
+
+```
+
+
+
 ## Contributing
 
 Contributions are welcome! Please fork this repository and submit a pull request for any changes you wish to make.
@@ -188,3 +206,4 @@ Contributions are welcome! Please fork this repository and submit a pull request
 This project is licensed under the MIT License. See the LICENSE file for more information.
 Connect with Me
 LinkedIn (https://www.linkedin.com/in/monoj-kumar-das-019340a9/)
+```
