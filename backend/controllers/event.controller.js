@@ -1,4 +1,5 @@
 const { Event, Booking, User } = require("../models");
+const { Op } = require("sequelize");
 const eventBus = require("../events/eventBus");
 const { EVENT_UPDATED } = require("../events/eventTypes");
 
