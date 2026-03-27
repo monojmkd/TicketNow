@@ -21,6 +21,11 @@ const Event = sequelize.define("Event", {
   },
 
   location: DataTypes.STRING,
+  price: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
 
   totalTickets: {
     type: DataTypes.INTEGER,

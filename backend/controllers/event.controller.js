@@ -2,15 +2,13 @@ const { Event, Booking, User } = require("../models");
 const eventBus = require("../events/eventBus");
 const { EVENT_UPDATED } = require("../events/eventTypes");
 
-// Whitelist of fields a client is allowed to set on an event.
-// Never spread req.body directly — a caller could inject organizerId or
-// availableTickets and silently corrupt the record.
 const ALLOWED_CREATE_FIELDS = [
   "title",
   "description",
   "date",
   "location",
   "totalTickets",
+  "price",
   "imageUrl",
 ];
 const ALLOWED_UPDATE_FIELDS = [
@@ -18,6 +16,7 @@ const ALLOWED_UPDATE_FIELDS = [
   "description",
   "date",
   "location",
+  "price",
   "imageUrl",
 ];
 
@@ -26,11 +25,9 @@ exports.createEvent = async (req, res, next) => {
     const { title, date, totalTickets } = req.body;
 
     if (!title || !date || !totalTickets)
-      return res
-        .status(400)
-        .json({
-          message: "Missing required fields: title, date, totalTickets",
-        });
+      return res.status(400).json({
+        message: "Missing required fields: title, date, totalTickets",
+      });
 
     // Pick only the fields we explicitly allow — no mass assignment
     const payload = {};
@@ -55,8 +52,21 @@ exports.getEvents = async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const offset = (page - 1) * limit;
+    const search = req.query.search?.trim();
+    const location = req.query.location?.trim();
+
+    const where = {};
+
+    if (search) {
+      where.title = { [Op.iLike]: `%${search}%` };
+    }
+
+    if (location) {
+      where.location = { [Op.iLike]: `%${location}%` };
+    }
 
     const { count, rows } = await Event.findAndCountAll({
+      where,
       limit,
       offset,
       order: [["date", "ASC"]],
