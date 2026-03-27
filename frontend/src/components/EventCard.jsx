@@ -15,7 +15,7 @@ function formatDate(dateStr) {
 
 function formatPrice(price) {
   const n = parseFloat(price);
-  return n === 0 ? "Free" : `$${n.toFixed(2)}`;
+  return n === 0 ? "Free" : `₹${n.toFixed(2)}`;
 }
 
 export default function EventCard({ event, onEdit, onBooked }) {

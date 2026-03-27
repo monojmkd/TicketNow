@@ -93,7 +93,7 @@ export default function OrganizerDashboard() {
             </div>
             <div className="stat-divider" />
             <div className="stat-item">
-              <div className="stat-value">${totalRevenue.toFixed(0)}</div>
+              <div className="stat-value">₹{totalRevenue.toFixed(0)}</div>
               <div className="stat-label">Est. revenue</div>
             </div>
           </div>
