@@ -1,17 +1,26 @@
-// In dev: Vite proxy rewrites /api → localhost:5000
-// In prod: VITE_API_URL points to the Render backend URL
 const BASE = import.meta.env.VITE_API_URL || "/api";
 
 export async function request(method, path, body = null) {
   const token = localStorage.getItem("token");
 
-  const headers = { "Content-Type": "application/json" };
+  const headers = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  // If body is FormData (file upload), do NOT set Content-Type —
+  // the browser sets it automatically with the correct multipart boundary.
+  // If body is a plain object, serialize to JSON.
+  let serializedBody = null;
+  if (body instanceof FormData) {
+    serializedBody = body;
+  } else if (body !== null) {
+    headers["Content-Type"] = "application/json";
+    serializedBody = JSON.stringify(body);
+  }
 
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: serializedBody,
   });
 
   const data = await res.json().catch(() => ({}));
