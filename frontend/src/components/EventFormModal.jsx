@@ -212,7 +212,7 @@ export default function EventFormModal({ event, onClose, onSaved }) {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Price (USD)</label>
+            <label className="form-label">Price (₹)</label>
             <input
               className="form-input"
               type="number"
