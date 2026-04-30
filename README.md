@@ -2,7 +2,7 @@
 
 A full-stack event booking platform supporting two user roles — **Organizers** who create and manage events, and **Customers** who browse and book tickets. Built with Node.js + Express on the backend and React + Vite on the frontend.
 
-🌐 **Live:** [https://ticketnow-eta.vercel.app/](https://ticketnow-eta.vercel.app/)  
+🌐 **Live:** [https://ticketnow-eta.vercel.app/](https://ticketnow-eta.vercel.app/)
 🔧 **API:** [ticketnow-m4r3.onrender.com](https://ticketnow-m4r3.onrender.com)
 
 ---
@@ -25,24 +25,25 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 ### Organizer
 
 - Register and log in as an organizer
-- Create, edit events with title, description, date, location, ticket count, price, and cover image
+- Create and edit events with title, description, date, location, ticket count, price, and cover image
+- Cover images are uploaded to **Cloudinary** via the backend — no browser-to-storage direct calls
 - View a dashboard with stats — tickets sold, capacity, estimated revenue
 - Customers with active bookings are automatically notified when an event is updated
 
 ### Customer
 
-- Browse all events without signing in
+- Browse and **search** all events without signing in
+- Search by **event title** or filter by **location** — both debounced, work independently or together
 - Register and log in to book tickets
 - Quantity selector with live total price calculation
 - View booking history grouped by confirmed and cancelled
-- Receive real-time toast notifications when a booked event is updated
 
 ### General
 
 - JWT-based stateless authentication
 - Role-based access control on every protected route
 - Atomic ticket booking — race conditions handled via database-level row locking
-- Event images uploaded directly to Supabase Storage (bypasses the backend)
+- Event images stored in **Cloudinary** (served via CDN, never pauses)
 - Async background notifications via an in-memory job queue
 
 ---
@@ -51,24 +52,87 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 
 ### Backend
 
-| Layer           | Choice                                |
-| --------------- | ------------------------------------- |
-| Runtime         | Node.js                               |
-| Framework       | Express                               |
-| ORM             | Sequelize                             |
-| Database        | PostgreSQL (Neon)                     |
-| Auth            | JWT (jsonwebtoken + bcryptjs)         |
-| Background jobs | Custom in-memory queue (EventEmitter) |
+| Layer           | Choice                                     |
+| --------------- | ------------------------------------------ |
+| Runtime         | Node.js                                    |
+| Framework       | Express                                    |
+| ORM             | Sequelize                                  |
+| Database        | PostgreSQL (Neon)                          |
+| Auth            | JWT (jsonwebtoken + bcryptjs)              |
+| File storage    | Cloudinary (via multer-storage-cloudinary) |
+| Background jobs | Custom in-memory queue (EventEmitter)      |
 
 ### Frontend
 
-| Layer        | Choice                                         |
-| ------------ | ---------------------------------------------- |
-| Framework    | React 18                                       |
-| Build tool   | Vite                                           |
-| Routing      | React Router v6                                |
-| File storage | Supabase Storage (direct browser upload)       |
-| Styling      | Pure CSS (custom design system, no UI library) |
+| Layer      | Choice                                         |
+| ---------- | ---------------------------------------------- |
+| Framework  | React 18                                       |
+| Build tool | Vite                                           |
+| Routing    | React Router v6                                |
+| Styling    | Pure CSS (custom design system, no UI library) |
+
+---
+
+## Project Structure
+
+```
+event-booking-system/
+├── backend/
+│   ├── config/
+│   │   ├── cloudinary.js          Cloudinary SDK + multer storage config
+│   │   └── db.js                  Sequelize + Neon connection
+│   ├── controllers/
+│   │   ├── auth.controller.js
+│   │   ├── booking.controller.js
+│   │   └── event.controller.js    CRUD + title/location search
+│   ├── events/
+│   │   ├── eventBus.js
+│   │   ├── eventTypes.js
+│   │   └── listeners.js           Bridges eventBus → notification queue
+│   ├── middleware/
+│   │   ├── auth.middleware.js
+│   │   ├── error.middleware.js
+│   │   ├── role.middleware.js
+│   │   └── upload.middleware.js   Cloudinary upload + old image cleanup
+│   ├── models/
+│   │   ├── booking.model.js
+│   │   ├── event.model.js         Includes price (cents) and imageUrl
+│   │   ├── index.js
+│   │   └── user.model.js
+│   ├── queues/
+│   │   └── notification.queue.js
+│   ├── routes/
+│   │   ├── auth.routes.js
+│   │   ├── booking.routes.js
+│   │   └── event.routes.js        uploadImage middleware on POST and PUT
+│   ├── workers/
+│   │   └── notification.worker.js
+│   ├── app.js
+│   └── server.js
+│
+└── frontend/
+    └── src/
+        ├── api/
+        │   ├── auth.js
+        │   ├── bookings.js
+        │   ├── client.js          fetch wrapper — handles both JSON and FormData
+        │   ├── events.js          getEvents accepts search + location params
+        │   └── upload.js          buildEventFormData() helper
+        ├── components/
+        │   ├── EventCard.jsx
+        │   ├── EventFormModal.jsx  Sends multipart/form-data, image preview
+        │   ├── Modal.jsx
+        │   ├── Navbar.jsx
+        │   └── ProtectedRoute.jsx
+        ├── context/
+        │   └── AuthContext.jsx
+        └── pages/
+            ├── EventsPage.jsx      Title search + location filter
+            ├── LoginPage.jsx
+            ├── MyBookingsPage.jsx
+            ├── OrganizerDashboard.jsx
+            └── RegisterPage.jsx
+```
 
 ---
 
@@ -77,7 +141,8 @@ A full-stack event booking platform supporting two user roles — **Organizers**
 ### Prerequisites
 
 - Node.js 18+
-- - A [Neon](https://neon.tech) account (free) for the database
+- A [Neon](https://neon.tech) account (free) for the database
+- A [Cloudinary](https://cloudinary.com) account (free) for image storage
 
 ### 1. Clone the repo
 
@@ -104,11 +169,12 @@ Backend runs on `http://localhost:5000`
 cd frontend
 npm install
 cp .env.example .env
-# Fill in your .env values
 npm run dev
 ```
 
 Frontend runs on `http://localhost:5173`
+
+---
 
 ## Environment Variables
 
@@ -119,7 +185,25 @@ PORT=5000
 DATABASE_URL=postgres://user:password@host:5432/database
 JWT_SECRET=your_long_random_secret_here
 JWT_EXPIRES_IN=7d
+
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
+
+Get your Cloudinary credentials from [cloudinary.com](https://cloudinary.com) → Dashboard.
+
+### Frontend — `frontend/.env`
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+> Supabase environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) are no longer used and should be removed.
+
+---
+
+## API Reference
 
 ### Auth
 
@@ -130,68 +214,102 @@ JWT_EXPIRES_IN=7d
 
 ### Events
 
-| Method | Endpoint      | Auth | Role            |
-| ------ | ------------- | ---- | --------------- |
-| GET    | `/events`     | —    | Public          |
-| POST   | `/events`     | ✓    | organizer       |
-| PUT    | `/events/:id` | ✓    | organizer (own) |
+| Method | Endpoint      | Auth | Role            | Notes                                                                        |
+| ------ | ------------- | ---- | --------------- | ---------------------------------------------------------------------------- |
+| GET    | `/events`     | —    | Public          | Supports `?search=` and `?location=` query params                            |
+| POST   | `/events`     | ✓    | organizer       | `multipart/form-data` — includes optional `image` field                      |
+| PUT    | `/events/:id` | ✓    | organizer (own) | `multipart/form-data` — replaces old image on Cloudinary if new one uploaded |
+
+#### Search query params
+
+```
+GET /events?search=music&location=berlin&page=1&limit=10
+```
+
+| Param      | Type   | Description                                |
+| ---------- | ------ | ------------------------------------------ |
+| `search`   | string | Case-insensitive partial match on title    |
+| `location` | string | Case-insensitive partial match on location |
+| `page`     | number | Page number (default 1)                    |
+| `limit`    | number | Results per page (default 10, max 100)     |
+
+### Bookings
+
+| Method | Endpoint    | Auth | Role     |
+| ------ | ----------- | ---- | -------- |
+| POST   | `/bookings` | ✓    | customer |
+| GET    | `/bookings` | ✓    | customer |
+
+---
 
 ## Background Tasks
 
-The backend uses a custom in-memory job queue (no Redis required) built on Node's `EventEmitter`. Two background tasks are implemented:
+The backend uses a custom in-memory job queue (no Redis required) built on Node's `EventEmitter`. Two background tasks run asynchronously after their triggering HTTP response is already sent.
 
 ### Task 1 — Booking Confirmation
 
-Triggered when a customer successfully books tickets.
+Triggered when a customer successfully books tickets. Logs a confirmation "email" to the console with the customer name, event title, and ticket count.
 
 ### Task 2 — Event Update Notification
 
-Triggered when an organizer updates an event.Notifies all customers with confirmed bookings.
+Triggered when an organizer updates an event. Queries all customers with confirmed bookings for that event and logs a notification "email" for each one.
+
+---
 
 ## Design Decisions
 
-### Atomic bookings via database transaction
+### Image storage moved from Supabase to Cloudinary
 
-The availability check and ticket decrement are wrapped in a single Sequelize transaction with a pessimistic row lock (`{ lock: true }`). This prevents two concurrent requests from double-booking the last seat — the second request waits until the first commits, then reads the updated count.
+Supabase free tier pauses after 7 days of inactivity, making all stored images unavailable until the project is manually resumed. Cloudinary's free tier has no inactivity pause and serves images via a global CDN.
 
-### JWT is stateless
+Images are uploaded through the backend rather than directly from the browser. This keeps Cloudinary API credentials server-side only and lets the backend enforce authentication — only logged-in organizers can upload images.
 
-Sessions are not stored server-side. The token contains `{ id, email, role, name }` and is verified on every request. This means server restarts don't log users out and the API can scale horizontally without a shared session store. Tokens expire after 7 days.
+When an organizer replaces an event image, the old Cloudinary asset is deleted automatically (`deleteOldImage` in `upload.middleware.js`) to avoid accumulating orphaned files.
+
+```
+Organizer selects image in EventFormModal
+        ↓
+Frontend builds multipart/form-data (fields + image)
+        ↓
+POST /events  (Content-Type: multipart/form-data)
+        ↓
+uploadImage middleware streams file to Cloudinary
+        ↓
+req.file.path = "https://res.cloudinary.com/..."
+        ↓
+Controller saves URL to Neon (Events.imageUrl)
+        ↓
+Frontend renders <img src={url}> — always loads
+```
 
 ### Price stored in cents
 
-All monetary values are stored as integers representing cents (e.g. `4999` = $49.99). This avoids floating-point precision issues with currency arithmetic.
+All monetary values are stored as integers representing cents (e.g. `4999` = $49.99). This avoids floating-point precision issues with currency arithmetic. The frontend converts to dollars for display and back to cents before sending to the API.
 
-### Image upload bypasses the backend
+### Title and location search
 
-Event images are uploaded directly from the browser to Neon Storage. The backend only stores the resulting URL string. This keeps the Express server stateless and avoids piping large files through Node.
+`GET /events` accepts optional `?search=` (matches event title) and `?location=` (matches location) query parameters. Both use PostgreSQL `ILIKE` for case-insensitive partial matching and can be combined. The frontend debounces both inputs at 400ms so the API is not called on every keystroke.
 
-### In-memory job queue
+### Atomic bookings via database transaction
 
-The notification queue is a simple EventEmitter-based FIFO queue with no external dependencies. Jobs are processed one at a time so handlers never race. The trade-off is that pending jobs are lost on server restart — acceptable for this use case since notifications are best-effort.
+The availability check and ticket decrement are wrapped in a single Sequelize transaction with a pessimistic row lock (`{ lock: true }`). This prevents two concurrent requests from double-booking the last seat — the second request waits at the database level until the first commits, then reads the updated count.
+
+### JWT is stateless
+
+Sessions are not stored server-side. The token contains `{ id, email, role, name }` and is verified on every request. Server restarts don't log users out and the API scales horizontally without a shared session store. Tokens expire after 7 days.
 
 ### Role checks are two-layered
 
 - `role.middleware.js` guards routes by role category (organizer vs customer)
-- Controllers enforce resource ownership (e.g. organizer can only edit their own events)
+- Controllers enforce resource ownership (e.g. an organizer can only edit their own events)
 
 This keeps route files declarative and keeps ownership logic close to the data.
 
+### In-memory job queue
+
+The notification queue is a simple EventEmitter-based FIFO queue with no external dependencies. Jobs are processed one at a time so handlers never race each other. The trade-off is that pending jobs are lost on server restart — acceptable here since notifications are best-effort.
+
 ---
-
-Organizer uploads image
-↓
-Browser sends file directly to Supabase Storage
-↓
-Supabase stores the file, returns a public URL
-↓
-Frontend sends that URL string to your Express backend
-↓
-Backend saves the URL string into Neon (Events.imageUrl column)
-↓
-Frontend reads the URL from Neon and renders `<img src={url}/>`
-
-Supabase acts purely as a file host — like AWS S3 or Cloudinary. The actual database record in Neon only ever holds a plain text URL string.
 
 ## Contributing
 
@@ -200,6 +318,7 @@ Contributions are welcome! Please fork this repository and submit a pull request
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more information.
-Connect with Me
-LinkedIn (https://www.linkedin.com/in/monoj-kumar-das-019340a9/)
 
+---
+
+Connect with Me — [LinkedIn](https://www.linkedin.com/in/monoj-kumar-das-019340a9/)
